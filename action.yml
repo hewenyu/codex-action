@@ -212,7 +212,7 @@ runs:
     # This step has an output named `port`.
     - name: Read server info
       id: read_server_info
-      if: ${{ (inputs['openai-api-key'] != '' && inputs['crs-api-key'] == '') || inputs.prompt != '' || inputs['prompt-file'] != '' }}
+      if: ${{ inputs['openai-api-key'] != '' && inputs['crs-api-key'] == '' }}
       shell: bash
       run: node "${{ github.action_path }}/dist/main.js" read-server-info "${{ steps.derive_server_info.outputs.server_info_file }}"
 
