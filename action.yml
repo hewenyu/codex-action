@@ -269,6 +269,8 @@ runs:
       id: run_codex
       if: ${{ inputs.prompt != '' || inputs['prompt-file'] != '' }}
       env:
+        # Pass CRS API key to Codex when using CRS provider.
+        CRS_OAI_KEY: ${{ inputs['crs-api-key'] }}
         CODEX_PROMPT: ${{ inputs.prompt }}
         CODEX_PROMPT_FILE: ${{ inputs['prompt-file'] }}
         CODEX_OUTPUT_FILE: ${{ inputs['output-file'] }}
