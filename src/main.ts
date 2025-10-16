@@ -16,6 +16,7 @@ import { dropSudo } from "./dropSudo";
 import { ensureActorHasWriteAccess } from "./checkActorPermissions";
 import parseArgsStringToArgv from "string-argv";
 import { writeProxyConfig } from "./writeProxyConfig";
+import { writeCrsConfig } from "./writeCrsConfig";
 import { checkOutput } from "./checkOutput";
 
 export async function main() {
@@ -93,6 +94,38 @@ export async function main() {
       }) => {
         const safetyStrategy = toSafetyStrategy(options.safetyStrategy);
         await writeProxyConfig(options.codexHome, options.port, safetyStrategy);
+      }
+    );
+
+  program
+    .command("write-crs-config")
+    .description(
+      "Write the CRS model provider config into CODEX_HOME/config.toml and auth.json"
+    )
+    .requiredOption("--codex-home <DIRECTORY>", "Path to Codex home directory")
+    .requiredOption("--base-url <URL>", "Base URL for CRS service")
+    .requiredOption("--model <MODEL>", "Model to use with CRS")
+    .requiredOption("--reasoning-effort <EFFORT>", "Reasoning effort level")
+    .requiredOption(
+      "--safety-strategy <strategy>",
+      "Safety strategy to use. One of 'drop-sudo', 'read-only', 'unprivileged-user', or 'unsafe'."
+    )
+    .action(
+      async (options: {
+        codexHome: string;
+        baseUrl: string;
+        model: string;
+        reasoningEffort: string;
+        safetyStrategy: string;
+      }) => {
+        const safetyStrategy = toSafetyStrategy(options.safetyStrategy);
+        await writeCrsConfig(
+          options.codexHome,
+          options.baseUrl,
+          options.model,
+          options.reasoningEffort,
+          safetyStrategy
+        );
       }
     );
 
