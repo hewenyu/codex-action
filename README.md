@@ -174,7 +174,10 @@ jobs:
         id: run_codex
         uses: hewenyu/codex-action@crs
         with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          crs-api-key: ${{ secrets.CRS_API_KEY }}
+          crs-base-url: "https://codex.letsfunapp.com/openai"
+          crs-model: "gpt-5-codex"
+          crs-reasoning-effort: "high"
           prompt: |
             This is PR #${{ github.event.pull_request.number }} for ${{ github.repository }}.
             Base SHA: ${{ github.event.pull_request.base.sha }}
