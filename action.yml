@@ -18,6 +18,22 @@ inputs:
     description: "OpenAI API key used by Codex."
     required: false
     default: ""
+  crs-api-key:
+    description: "Third-party CRS API key. If provided, CRS configuration will be used instead of OpenAI proxy."
+    required: false
+    default: ""
+  crs-base-url:
+    description: "Base URL for third-party CRS service (e.g., https://codex.letsfunapp.com/openai). Only used when crs-api-key is provided."
+    required: false
+    default: ""
+  crs-model:
+    description: "Model to use with CRS service. Only used when crs-api-key is provided."
+    required: false
+    default: "gpt-5-codex"
+  crs-reasoning-effort:
+    description: "Reasoning effort level for CRS. Only used when crs-api-key is provided."
+    required: false
+    default: "high"
   working-directory:
     description: "Working directory that Codex should use. Defaults to the repository root."
     required: false
@@ -147,7 +163,7 @@ runs:
 
     - name: Check Responses API proxy status
       id: start_proxy
-      if: ${{ inputs['openai-api-key'] != '' }}
+      if: ${{ inputs['openai-api-key'] != '' && inputs['crs-api-key'] == '' }}
       shell: bash
       run: |
         server_info_file="${{ steps.derive_server_info.outputs.server_info_file }}"
@@ -163,7 +179,7 @@ runs:
     # key do not end up in the memory of the `codex-responses-api-proxy` process
     # where environment variables are stored.
     - name: Start Responses API proxy
-      if: ${{ inputs['openai-api-key'] != '' && steps.start_proxy.outputs.server_info_file_exists == 'false' }}
+      if: ${{ inputs['openai-api-key'] != '' && inputs['crs-api-key'] == '' && steps.start_proxy.outputs.server_info_file_exists == 'false' }}
       env:
         OPENAI_API_KEY: ${{ inputs['openai-api-key'] }}
       shell: bash
@@ -173,7 +189,7 @@ runs:
         ) &
 
     - name: Wait for Responses API proxy
-      if: ${{ inputs['openai-api-key'] != '' && steps.start_proxy.outputs.server_info_file_exists == 'false' }}
+      if: ${{ inputs['openai-api-key'] != '' && inputs['crs-api-key'] == '' && steps.start_proxy.outputs.server_info_file_exists == 'false' }}
       shell: bash
       run: |
         server_info_file="${{ steps.derive_server_info.outputs.server_info_file }}"
@@ -196,12 +212,12 @@ runs:
     # This step has an output named `port`.
     - name: Read server info
       id: read_server_info
-      if: ${{ inputs['openai-api-key'] != '' || inputs.prompt != '' || inputs['prompt-file'] != '' }}
+      if: ${{ (inputs['openai-api-key'] != '' && inputs['crs-api-key'] == '') || inputs.prompt != '' || inputs['prompt-file'] != '' }}
       shell: bash
       run: node "${{ github.action_path }}/dist/main.js" read-server-info "${{ steps.derive_server_info.outputs.server_info_file }}"
 
     - name: Write Codex proxy config
-      if: ${{ inputs['openai-api-key'] != '' }}
+      if: ${{ inputs['openai-api-key'] != '' && inputs['crs-api-key'] == '' }}
       shell: bash
       run: |
         node "${{ github.action_path }}/dist/main.js" write-proxy-config \
@@ -209,8 +225,21 @@ runs:
           --port "${{ steps.read_server_info.outputs.port }}" \
           --safety-strategy "${{ inputs['safety-strategy'] }}"
 
+    - name: Write CRS config
+      if: ${{ inputs['crs-api-key'] != '' }}
+      env:
+        CRS_OAI_KEY: ${{ inputs['crs-api-key'] }}
+      shell: bash
+      run: |
+        node "${{ github.action_path }}/dist/main.js" write-crs-config \
+          --codex-home "${{ steps.resolve_home.outputs.codex-home }}" \
+          --base-url "${{ inputs['crs-base-url'] }}" \
+          --model "${{ inputs['crs-model'] }}" \
+          --reasoning-effort "${{ inputs['crs-reasoning-effort'] }}" \
+          --safety-strategy "${{ inputs['safety-strategy'] }}"
+
     - name: Drop sudo privilege, if appropriate
-      if: ${{ inputs['safety-strategy'] == 'drop-sudo' && inputs['openai-api-key'] != '' }}
+      if: ${{ inputs['safety-strategy'] == 'drop-sudo' && (inputs['openai-api-key'] != '' || inputs['crs-api-key'] != '') }}
       shell: bash
       run: |
         case "${RUNNER_OS}" in
@@ -227,7 +256,7 @@ runs:
         esac
 
     - name: Verify sudo privilege removed
-      if: ${{ inputs['safety-strategy'] == 'drop-sudo' && inputs['openai-api-key'] != '' }}
+      if: ${{ inputs['safety-strategy'] == 'drop-sudo' && (inputs['openai-api-key'] != '' || inputs['crs-api-key'] != '') }}
       shell: bash
       run: |
         if sudo -n true 2>/dev/null; then
