@@ -90,24 +90,28 @@ jobs:
 
 ## Inputs
 
-| Name                 | Description                                                                                                                             | Default     |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| `openai-api-key`     | Secret used to start the Responses API proxy. Required when starting the proxy (key-only or key+prompt). Store it in `secrets`.         | `""`        |
-| `prompt`             | Inline prompt text. Provide this or `prompt-file`.                                                                                      | `""`        |
-| `prompt-file`        | Path (relative to the repository root) of a file that contains the prompt. Provide this or `prompt`.                                    | `""`        |
-| `output-file`        | File where the final Codex message is written. Leave empty to skip writing a file.                                                      | `""`        |
-| `working-directory`  | Directory passed to `codex exec --cd`. Defaults to the repository root.                                                                 | `""`        |
-| `sandbox`            | Sandbox mode for Codex. One of `workspace-write` (default), `read-only` or `danger-full-access`.                                        | `""`        |
-| `codex-version`      | Version of `@openai/codex` to install.                                                                                                  | `""`        |
-| `codex-args`         | Extra arguments forwarded to `codex exec`. Accepts JSON arrays (`["--flag", "value"]`) or shell-style strings.                          | `""`        |
-| `output-schema`      | Inline schema contents written to a temp file and passed to `codex exec --output-schema`. Mutually exclusive with `output-schema-file`. | `""`        |
-| `output-schema-file` | Schema file forwarded to `codex exec --output-schema`. Leave empty to skip passing the option.                                          | `""`        |
-| `model`              | Model the agent should use. Leave empty to let Codex pick its default.                                                                  | `""`        |
-| `codex-home`         | Directory to use as the Codex CLI home (config/cache). Uses the CLI default when empty.                                                 | `""`        |
-| `safety-strategy`    | Controls how the action restricts Codex privileges. See [Safety strategy](#safety-strategy).                                            | `drop-sudo` |
-| `codex-user`         | Username to run Codex as when `safety-strategy` is `unprivileged-user`.                                                                 | `""`        |
-| `allow-users`        | List of GitHub usernames who can trigger the action in addition to those who have write access to the repo.                             | ""          |
-| `allow-bots`         | Allow runs triggered by GitHub Apps/bot accounts to bypass the write-access check.                                                      | "false"     |
+| Name                   | Description                                                                                                                                                                                                   | Default         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `openai-api-key`       | Secret used to start the Responses API proxy. Required when starting the proxy (key-only or key+prompt). Store it in `secrets`. Mutually exclusive with `crs-api-key`.                                       | `""`            |
+| `crs-api-key`          | Third-party CRS API key. If provided, CRS configuration will be used instead of OpenAI proxy. Store it in `secrets`. Mutually exclusive with `openai-api-key`. See [CRS Configuration](#crs-configuration). | `""`            |
+| `crs-base-url`         | Base URL for third-party CRS service (e.g., https://codex.letsfunapp.com/openai). Only used when `crs-api-key` is provided.                                                                                  | `""`            |
+| `crs-model`            | Model to use with CRS service. Only used when `crs-api-key` is provided.                                                                                                                                     | `"gpt-5-codex"` |
+| `crs-reasoning-effort` | Reasoning effort level for CRS. Only used when `crs-api-key` is provided.                                                                                                                                    | `"high"`        |
+| `prompt`               | Inline prompt text. Provide this or `prompt-file`.                                                                                                                                                            | `""`            |
+| `prompt-file`          | Path (relative to the repository root) of a file that contains the prompt. Provide this or `prompt`.                                                                                                          | `""`            |
+| `output-file`          | File where the final Codex message is written. Leave empty to skip writing a file.                                                                                                                            | `""`            |
+| `working-directory`    | Directory passed to `codex exec --cd`. Defaults to the repository root.                                                                                                                                       | `""`            |
+| `sandbox`              | Sandbox mode for Codex. One of `workspace-write` (default), `read-only` or `danger-full-access`.                                                                                                              | `""`            |
+| `codex-version`        | Version of `@openai/codex` to install.                                                                                                                                                                        | `""`            |
+| `codex-args`           | Extra arguments forwarded to `codex exec`. Accepts JSON arrays (`["--flag", "value"]`) or shell-style strings.                                                                                                | `""`            |
+| `output-schema`        | Inline schema contents written to a temp file and passed to `codex exec --output-schema`. Mutually exclusive with `output-schema-file`.                                                                       | `""`            |
+| `output-schema-file`   | Schema file forwarded to `codex exec --output-schema`. Leave empty to skip passing the option.                                                                                                                | `""`            |
+| `model`                | Model the agent should use. Leave empty to let Codex pick its default.                                                                                                                                        | `""`            |
+| `codex-home`           | Directory to use as the Codex CLI home (config/cache). Uses the CLI default when empty.                                                                                                                       | `""`            |
+| `safety-strategy`      | Controls how the action restricts Codex privileges. See [Safety strategy](#safety-strategy).                                                                                                                  | `drop-sudo`     |
+| `codex-user`           | Username to run Codex as when `safety-strategy` is `unprivileged-user`.                                                                                                                                       | `""`            |
+| `allow-users`          | List of GitHub usernames who can trigger the action in addition to those who have write access to the repo.                                                                                                   | ""              |
+| `allow-bots`           | Allow runs triggered by GitHub Apps/bot accounts to bypass the write-access check.                                                                                                                            | "false"         |
 
 ## Safety Strategy
 
@@ -124,6 +128,56 @@ See [Protecting your `OPENAI_API_KEY`](./docs/security.md#protecting-your-openai
 
 - **Windows**: GitHub-hosted Windows runners lack a supported sandbox. Set `safety-strategy: unsafe`. The action validates this and exits early otherwise.
 - **Linux/macOS**: All options for `safety-strategy` are supported. Again, if you pick `drop-sudo`, remember that later steps in your `job` that rely on `sudo` will fail. If you do need to run code that requires `sudo` after `openai/codex-action` has run, one option is to pipe the output of `openai/codex-action` to a fresh `job` on a new host and to continue your workflow from there.
+
+## CRS Configuration
+
+For users who want to use third-party Codex Relay Service (CRS) instead of direct OpenAI API access, this action supports CRS configuration. This is useful when:
+
+- You want to use an open-source CRS relay service
+- You need to route requests through a custom endpoint
+- You want to use alternative authentication methods
+
+### How to use CRS
+
+Instead of providing `openai-api-key`, provide `crs-api-key` along with `crs-base-url`:
+
+```yaml
+- name: Run Codex with CRS
+  uses: openai/codex-action@v1
+  with:
+    crs-api-key: ${{ secrets.CRS_API_KEY }}
+    crs-base-url: "https://codex.letsfunapp.com/openai"
+    crs-model: "gpt-5-codex"
+    crs-reasoning-effort: "high"
+    prompt: "Your prompt here"
+```
+
+This will generate the following Codex configuration:
+
+**~/.codex/config.toml:**
+```toml
+model_provider = "crs"
+model = "gpt-5-codex"
+model_reasoning_effort = "high"
+disable_response_storage = true
+preferred_auth_method = "apikey"
+
+[model_providers.crs]
+name = "crs"
+base_url = "https://codex.letsfunapp.com/openai"
+wire_api = "responses"
+requires_openai_auth = true
+env_key = "CRS_OAI_KEY"
+```
+
+**~/.codex/auth.json:**
+```json
+{
+  "OPENAI_API_KEY": null
+}
+```
+
+The CRS API key is passed via the `CRS_OAI_KEY` environment variable, which is set automatically by the action.
 
 ## Outputs
 
